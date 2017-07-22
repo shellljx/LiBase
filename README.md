@@ -17,7 +17,7 @@ allprojects {
 **Step 2.** Add the dependency
 ```
 dependencies {
-	      compile 'com.github.shellljx.LiBase:basenet:-SNAPSHOT'
+	compile 'com.github.shellljx.LiBase:basenet:-SNAPSHOT'
         compile 'com.github.shellljx.LiBase:baseui:-SNAPSHOT'
 }
 ```
