@@ -1,8 +1,11 @@
 package com.licrafter.basenet;
 
+
 import com.google.gson.GsonBuilder;
 import com.licrafter.basenet.cookie.MemoryCookieJar;
+import com.licrafter.basenet.utils.LogUtils;
 
+import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
@@ -19,32 +22,48 @@ public class API {
     public static HttpClientConfig mHttpClientConfig = new HttpClientConfig();
 
     private static volatile OkHttpClient mHttpClient;
-    private static volatile Retrofit mRetrofit;
+    private static volatile HashMap<String, Object> mServiceMap;
 
     /**
      * get api service
      */
+    @SuppressWarnings("unchecked")
     public static <T> T getService(Class<T> service) {
-        return getRetrofit().create(service);
+        if (mServiceMap.containsKey(service.getName())) {
+            try {
+                return (T) mServiceMap.get(service.getName());
+            } catch (ClassCastException e) {
+                throw new RuntimeException("API service " + service.getName() + " cast wrong!");
+            }
+        } else {
+            throw new RuntimeException("This service is not registed!");
+        }
     }
 
-    private static Retrofit getRetrofit() {
-        if (mRetrofit == null) {
-            synchronized (API.class) {
-                if (mRetrofit == null) {
-                    OkHttpClient okClient = getOkHttpClient();
-                    mRetrofit = new Retrofit.Builder()
-                            .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
-                            .addConverterFactory(GsonConverterFactory.create(new GsonBuilder()
-                                    .setDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
-                                    .serializeNulls()
-                                    .create()))
-                            .client(okClient)
-                            .build();
-                }
+    public static <T> void regist(String url, Class<T> classes) {
+        synchronized (API.class) {
+            if (mServiceMap == null) {
+                mServiceMap = new HashMap<>(4);
+            } else if (!mServiceMap.containsKey(classes.getName())) {
+                mServiceMap.put(classes.getName(), getRetrofit(url).create(classes));
+                LogUtils.debug(API.class, "Registed service " + classes.getName());
             }
         }
-        return mRetrofit;
+    }
+
+    private static Retrofit getRetrofit(String url) {
+        synchronized (API.class) {
+            OkHttpClient okClient = getOkHttpClient();
+            return new Retrofit.Builder()
+                    .baseUrl(url)
+                    .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
+                    .addConverterFactory(GsonConverterFactory.create(new GsonBuilder()
+                            .setDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+                            .serializeNulls()
+                            .create()))
+                    .client(okClient)
+                    .build();
+        }
     }
 
     private static OkHttpClient getOkHttpClient() {
